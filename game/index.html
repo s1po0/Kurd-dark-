@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Dark Souls: Convergence of Ash &amp; Want — Playable Design Prototype</title>
+<meta name="description" content="A playable browser prototype of the Convergence GDD: DS3 tempo, DS2 Power Stance, DS1 true poise and equip-load tiers, Estus + Life Gems, Bonfire Ascetics, severance and three endings.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="cv" width="960" height="540"></canvas>
+
+  <!-- ============ HUD (Vol 9 §9.1 wireframe, 1920x1080 reference scaled to 960x540) ============ -->
+  <div id="hud" class="hidden">
+    <div id="vitals">
+      <div class="bar hp"><i id="hpFill"></i><b id="hpGhost"></b><span id="hpTxt"></span></div>
+      <div class="bar fp"><i id="fpFill"></i><span id="fpTxt"></span></div>
+      <div class="bar sta"><i id="staFill"></i><span id="staTxt"></span></div>
+      <div id="poiseRow">
+        <div id="poiseDiamond" title="Poise grade (Vol 3 §3.7)"><span id="poiseGrade"></span></div>
+        <div id="poiseMeta"><em id="poiseVal"></em><small id="poiseThr"></small></div>
+      </div>
+      <div id="estusRow">
+        <div class="flask" id="estusIcon" title="Estus Flask (E / RMB held)"><span id="estusN"></span></div>
+        <div class="gem" id="gemIcon" title="Life Gem (G)"></div>
+        <div id="stanceTag" class="hidden" title="Power Stance engaged (Vol 3 §3.6)"></div>
+        <div id="resTag" class="hidden" title="Resonance (Vol 4 §4.5)"></div>
+      </div>
+    </div>
+
+    <div id="quickslots"></div>
+
+    <div id="bossBar" class="hidden">
+      <div class="bname"><span id="bossName"></span><em id="bossPhase"></em></div>
+      <div class="bar bhp"><i id="bossFill"></i></div>
+      <div id="bossParts"></div>
+    </div>
+
+    <div id="prompt" class="hidden"><b id="promptKey">E</b><span id="promptTxt"></span></div>
+    <div id="toast"></div>
+    <div id="soulsTag"></div>
+    <div id="wantMeter" class="hidden"><i id="wantFill"></i><em>WANT</em></div>
+    <div id="flash"></div>
+    <div id="vignette"></div>
+    <div id="deathFade"></div>
+  </div>
+
+  <!-- ============ Overlays ============ -->
+  <div id="overlays">
+
+    <div id="ovTitle" class="ov show">
+      <div class="titleWrap">
+        <div class="emberRing"></div>
+        <h1 class="gdt">DARK SOULS</h1>
+        <h2 class="gdt sub">CONVERGENCE OF ASH &amp; WANT</h2>
+        <p class="tag">A playable prototype of the Master Game Design Document &mdash; Volumes 0&ndash;9</p>
+        <div class="tmenu">
+          <button data-act="new">New Journey</button>
+          <button data-act="continue" id="btnContinue">Continue</button>
+          <button data-act="codex">Design Codex</button>
+          <button data-act="settings">Settings</button>
+          <button data-act="credit">About</button>
+        </div>
+        <p class="hint">Keyboard &amp; mouse &middot; gamepad supported &middot; runs entirely offline</p>
+      </div>
+    </div>
+
+    <div id="ovClass" class="ov">
+      <div class="sheet">
+        <header><h3>Choose thy form</h3><p>Vol 2 &sect;2.2 &mdash; ten starting classes. Level = &Sigma;(9 attributes) &minus; 90.</p></header>
+        <div id="classList"></div>
+        <div id="classDetail"></div>
+        <footer><button data-act="beginJourney" id="btnBegin" disabled>Become the Ashen Hollow</button><button data-act="backTitle" class="ghost">Back</button></footer>
+      </div>
+    </div>
+
+    <div id="ovMenu" class="ov">
+      <nav id="menuTabs">
+        <button data-tab="stats" class="on">Attributes</button>
+        <button data-tab="equip">Equipment</button>
+        <button data-tab="bag">Inventory</button>
+        <button data-tab="magic">Attunement</button>
+        <button data-tab="smith">Blacksmith</button>
+        <button data-tab="cov">Covenants</button>
+        <button data-tab="map">World</button>
+        <button data-tab="codex">Codex</button>
+        <button data-tab="set">Settings</button>
+      </nav>
+      <div id="menuBody"></div>
+      <footer id="menuFoot"><span id="menuSoul"></span><button data-act="closeMenu" class="ghost">Close <b>ESC</b></button></footer>
+    </div>
+
+    <div id="ovDeath" class="ov">
+      <div class="deathWrap">
+        <h1 class="gdt die">YOU DIED</h1>
+        <p id="deathTip"></p>
+        <p class="hint">Ash returns to the last bonfire kindled. Thy souls lie where thou fell'st &mdash; reach them before dying again.</p>
+        <button data-act="respawn">Return to the Fire</button>
+      </div>
+    </div>
+
+    <div id="ovEnding" class="ov">
+      <div class="endWrap">
+        <h1 class="gdt" id="endTitle"></h1>
+        <p class="endKicker" id="endKicker"></p>
+        <div id="endBody"></div>
+        <div id="endStats"></div>
+        <div class="tmenu">
+          <button data-act="ngplus">Kindle a Bonfire Ascetic (NG+)</button>
+          <button data-act="toTitle">Return to Title</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="ovCodex" class="ov">
+      <div class="sheet wide">
+        <header><h3>Design Codex</h3><p>Every mechanic in this prototype, with the formula it implements.</p></header>
+        <div id="codexBody" class="scroll"></div>
+        <footer><button data-act="closeCodex" class="ghost">Close</button></footer>
+      </div>
+    </div>
+
+    <div id="ovSet" class="ov">
+      <div class="sheet">
+        <header><h3>Settings</h3><p>Vol 9 &sect;9.6 &mdash; accessibility &amp; presentation options.</p></header>
+        <div id="setBody" class="scroll"></div>
+        <footer><button data-act="closeSet" class="ghost">Close</button><button data-act="wipe">Erase Save</button></footer>
+      </div>
+    </div>
+
+    <div id="ovBoot" class="ov show">
+      <div class="bootWrap"><div class="spinner"></div><p>Kindling&hellip;</p></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/const.js"></script>
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/particles.js"></script>
+<script src="js/world.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/bosses.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
