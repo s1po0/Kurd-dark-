@@ -20,8 +20,15 @@ import re
 import sys
 from collections import defaultdict
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
-                    "unity", "KurdCastle", "Assets", "Scripts")
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..",
+                      "unity", "KurdCastle", "Assets")
+# Gameplay code, editor tooling and the EditMode tests are all checked. Editor
+# scripts reference UnityEngine/UnityEditor APIs the checker cannot see, but the
+# rules below (enums, Balance constants, definition fields, brace balance) apply
+# to them just the same.
+ROOT = os.path.join(ASSETS, "Scripts")
+SCAN_DIRS = [os.path.join(ASSETS, "Scripts"), os.path.join(ASSETS, "Editor"),
+             os.path.join(ASSETS, "Tests")]
 
 ERRORS = []
 WARNINGS = []
@@ -71,10 +78,13 @@ def strip_comments_and_strings(text):
 
 def collect_files():
     files = []
-    for dirpath, _dirnames, filenames in os.walk(ROOT):
-        for name in filenames:
-            if name.endswith('.cs'):
-                files.append(os.path.join(dirpath, name))
+    for root in SCAN_DIRS:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for name in filenames:
+                if name.endswith('.cs'):
+                    files.append(os.path.join(dirpath, name))
     return sorted(files)
 
 
@@ -280,6 +290,45 @@ def check_usings(files):
                 warn(f"{path}: using {ns}; — namespace not declared yet (planned?)")
 
 
+def check_namespace_imports(files):
+    """A type declared in another KurdCastle namespace must be imported.
+
+    This is the failure mode the compiler would catch first and the reason the
+    checker exists: a file can look perfectly balanced and still not compile
+    because `DamageMatrix` (KurdCastle.Combat) is used in KurdCastle.Construction
+    without a using directive. Comments and string literals are stripped first so
+    a mention in prose does not count.
+    """
+    ns_types = defaultdict(set)
+    ns_of_file = {}
+    for path in files:
+        code = strip_comments_and_strings(read(path))
+        m = re.search(r'namespace\s+([\w\.]+)', code)
+        if not m:
+            continue
+        ns = m.group(1)
+        ns_of_file[path] = ns
+        for t in re.findall(r'\b(?:sealed\s+|static\s+|abstract\s+)?(?:class|struct|enum|interface)\s+([A-Z]\w*)', code):
+            ns_types[ns].add(t)
+
+    for path in files:
+        code = strip_comments_and_strings(read(path))
+        my_ns = ns_of_file.get(path)
+        if my_ns is None:
+            continue
+        usings = set(re.findall(r'using\s+([\w\.]+)\s*;', code))
+        for ns, types in ns_types.items():
+            if ns == my_ns or ns in usings:
+                continue
+            used = sorted(t for t in types if re.search(r'\b' + re.escape(t) + r'\b', code))
+            if not used:
+                continue
+            # a fully qualified reference (KurdCastle.Foo.Bar) does not need a using
+            if ns + '.' in code:
+                continue
+            err(f"{path}: uses {', '.join(used)} from {ns} without `using {ns};`")
+
+
 def main():
     files = collect_files()
     if not files:
@@ -296,6 +345,7 @@ def main():
     check_balance_refs(files, consts)
     check_initialisers(files, members)
     check_usings(files)
+    check_namespace_imports(files)
 
     print(f"scanned {len(files)} C# files")
     print(f"  enums: {len(enums)}  types: {len(members)}  Balance constants: {len(consts)}")
