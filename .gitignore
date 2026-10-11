@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------
+# Kurd Castle - Isometric Castle Builder / RTS
+# ---------------------------------------------------------------
+
+# --- Unity ---
+unity/KurdCastle/[Ll]ibrary/
+unity/KurdCastle/[Tt]emp/
+unity/KurdCastle/[Oo]bj/
+unity/KurdCastle/[Bb]uild/
+unity/KurdCastle/[Bb]uilds/
+unity/KurdCastle/[Ll]ogs/
+unity/KurdCastle/[Uu]ser[Ss]ettings/
+unity/KurdCastle/[Mm]emoryCaptures/
+unity/KurdCastle/[Rr]ecordings/
+unity/KurdCastle/Assets/AssetStoreTools*
+unity/KurdCastle/*.csproj
+unity/KurdCastle/*.unityproj
+unity/KurdCastle/*.sln
+unity/KurdCastle/*.suo
+unity/KurdCastle/*.user
+unity/KurdCastle/*.userprefs
+unity/KurdCastle/*.pidb
+unity/KurdCastle/*.booproj
+unity/KurdCastle/*.svd
+unity/KurdCastle/*.pdb
+unity/KurdCastle/*.mdb
+unity/KurdCastle/*.opendb
+unity/KurdCastle/*.VC.db
+unity/KurdCastle/sysinfo.txt
+unity/KurdCastle/.vsconfig
+
+# Build outputs / signing material (NEVER commit keystores)
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+keystore.properties
+unity/KurdCastle/AndroidBuild/
+
+# --- Node / web preview ---
+node_modules/
+preview/dist/
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
