@@ -191,10 +191,13 @@ class App {
   }
 
   restart() {
-    const seed = (Math.random() * 0x7fffffff) | 0;
+    // A pinned seed stays pinned across restarts: that is what makes a failing
+    // headless run reproducible from the command line (SEED=… node test/headless.mjs).
+    const pinned = Number(globalThis.__KURD_SEED__);
+    const seed = pinned ? (pinned | 0) : ((Math.random() * 0x7fffffff) | 0);
+    this.seed = seed;
     this.world = new World(seed);
     this.view.world = this.world;
-    this.view.camera = this.world ? this.view.camera : this.view.camera;
     this.view.terrainSignature = -1;
     this.view.buildingSprites.clear();
     this.hud.world = this.world;

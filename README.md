@@ -22,7 +22,7 @@ no binary assets at all.
 | What it is | The shippable game: Unity 6 project targeting an Android APK | The same game as plain ES modules, playable in a browser and under Node |
 | Why it exists | APK output, real touch input, phone performance | Verifies the simulation runs, and lets anyone play it without installing anything |
 | Physics / rules | `Assets/Scripts/**` (13.7k lines of C#) | `preview/src/**` (~4.9k lines of JS, same numbers, same tick order) |
-| Verification | `python3 tools/check_csharp.py` + EditMode tests | `node preview/test/headless.mjs` (59 checks) |
+| Verification | `python3 tools/check_csharp.py` + EditMode tests | `node preview/test/headless.mjs` (60 checks) |
 
 The preview is not a mock-up: it implements the same balance tables, the same
 popularity ledger, the same pathfinding surfaces and the same wave director. It is
@@ -73,7 +73,7 @@ Run the two verification gates from the repository root:
 
 ```bash
 python3 tools/check_csharp.py      # C# : braces, enums, Balance refs, namespaces
-node preview/test/headless.mjs     # JS : 59 behavioural checks, random seed
+node preview/test/headless.mjs     # JS : 60 behavioural checks, random seed
 ```
 
 ---
@@ -302,7 +302,7 @@ reason), and use the top-right cluster for pause and 1× / 2× / 4× speed.
 
 ```bash
 python3 tools/check_csharp.py        # static C# checks (no toolchain needed)
-node preview/test/headless.mjs       # 59 behavioural checks against the live simulation
+node preview/test/headless.mjs       # 60 behavioural checks against the live simulation
 SEED=1234 node preview/test/headless.mjs
 DEBUG=1 node preview/test/headless.mjs
 ```

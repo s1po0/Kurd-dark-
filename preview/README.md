@@ -70,7 +70,7 @@ red ones are not — the toast tells you which rule failed.
 ## Verification
 
 ```bash
-node preview/test/headless.mjs        # 53 checks, random seed
+node preview/test/headless.mjs        # 60 checks, random seed
 SEED=1234 node test/headless.mjs      # reproduce a specific map
 DEBUG=1 node test/headless.mjs        # print state at the wave phase
 ```

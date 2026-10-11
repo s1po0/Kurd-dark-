@@ -482,11 +482,19 @@ step(30); // let any fresh corpse finish its death fade
 const corpses = world.units.filter((u) => !u.alive).length;
 check('corpses do not accumulate', corpses <= 4, `dead=${corpses}`);
 
+// Snapshot the scoreboard before the restart wipes it, so the summary below
+// reports the match we actually played.
+const played = { seed: app.world.seed, time: app.world.time, waves: app.world.wavesCleared,
+  total: app.world.wavesTotal, kills: app.world.score.enemiesKilled,
+  buildings: app.world.buildings.length, units: app.world.units.length };
+
 app.restart();
 app.startMatch();
 step(400);
 check('restart rebuilds the world', app.world !== world && app.world.buildings.length >= 8,
   `buildings=${app.world.buildings.length}`);
+check('restart keeps a pinned seed reproducible', !process.env.SEED || app.world.seed === played.seed,
+  `seed=${app.world.seed}`);
 
 // =============================================================================
 //  Report
@@ -498,9 +506,8 @@ if (failures.length) {
   console.log('');
   for (const line of failures) console.log(line);
 }
-const stats = app.world.score;
 console.log('────────────────────────────────────────────────────────────────');
-console.log(`seed=${app.world.seed} final: time=${app.world.time.toFixed(0)}s waves=${app.world.wavesCleared}/${app.world.wavesTotal} ` +
-  `kills=${stats.enemiesKilled} buildings=${app.world.buildings.length} units=${app.world.units.length}`);
+console.log(`seed=${played.seed} final: time=${played.time.toFixed(0)}s waves=${played.waves}/${played.total} ` +
+  `kills=${played.kills} buildings=${played.buildings} units=${played.units}`);
 console.log(failures.length ? `${failures.length} FAILURE(S)` : 'ALL CHECKS PASSED');
 process.exit(failures.length ? 1 : 0);
