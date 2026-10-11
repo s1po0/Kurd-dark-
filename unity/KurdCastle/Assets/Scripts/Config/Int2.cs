@@ -35,6 +35,15 @@ namespace KurdCastle.Config
             new Int2(0, -1), new Int2(-1, -1), new Int2(-1, 0), new Int2(-1, 1),
         };
 
+        /// <summary>
+        /// Implicit conversion with UnityEngine.Vector2Int keeps the simulation
+        /// free to speak grid coordinates while the view/UI layer speaks Unity
+        /// types, without sprinkling casts through both.
+        /// </summary>
+        public static implicit operator Vector2Int(Int2 v) { return new Vector2Int(v.x, v.y); }
+
+        public static implicit operator Int2(Vector2Int v) { return new Int2(v.x, v.y); }
+
         public static Int2 operator +(Int2 a, Int2 b) { return new Int2(a.x + b.x, a.y + b.y); }
         public static Int2 operator -(Int2 a, Int2 b) { return new Int2(a.x - b.x, a.y - b.y); }
         public static Int2 operator *(Int2 a, int m) { return new Int2(a.x * m, a.y * m); }

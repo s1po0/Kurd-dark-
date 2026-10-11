@@ -89,6 +89,11 @@ namespace KurdCastle.Config
 
         public static class Popularity
         {
+            /// <summary>Neutral popularity: factors are deltas on top of this.</summary>
+            public const float Baseline = 50f;
+            /// <summary>How fast popularity drifts toward the target, per second.</summary>
+            public const float DriftPerSecond = 0.6f;
+
             public const float FoodNone = -8f;
             public const float FoodHalf = -4f;
             public const float FoodFull = 0f;
@@ -222,6 +227,13 @@ namespace KurdCastle.Config
             /// <summary>Ranged attackers hold this fraction of their max range from towers.</summary>
             public const float RangedStandoffFactor = 0.85f;
             public const float FleeThresholdPct = 0.18f;
+            /// <summary>Broken units this close to the camp patch themselves up.</summary>
+            public const float CampHealRadius = 9f;
+            public const float CampHealPerSecond = 4f;
+            /// <summary>Retreats allowed before a unit loses heart and leaves for good.</summary>
+            public const int MaxRetreats = 2;
+            /// <summary>Seconds a broken unit lingers at the camp before deserting.</summary>
+            public const float DesertSeconds = 10f;
             /// <summary>Seconds the AI waits at the map edge between wave spawns.</summary>
             public const float SpawnSpreadSeconds = 1.2f;
         }

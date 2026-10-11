@@ -118,6 +118,28 @@ namespace KurdCastle.World
         public byte NavGroundAt(Int2 c) { return InBounds(c) ? _navGround[ToIndex(c)] : NavImpassable; }
         public byte NavBypassAt(Int2 c) { return InBounds(c) ? _navBypass[ToIndex(c)] : NavImpassable; }
 
+        /// <summary>
+        /// Clears navigation costs but keeps the footprint occupied. Used when a
+        /// building collapses into rubble: troops walk over the debris, but the
+        /// player cannot build there until it is cleared.
+        /// </summary>
+        public void ReleaseNav(IntRect rect)
+        {
+            for (int y = rect.y; y < rect.yMax; y++)
+            {
+                for (int x = rect.x; x < rect.xMax; x++)
+                {
+                    Int2 c = new Int2(x, y);
+                    if (!InBounds(c)) continue;
+                    int i = ToIndex(c);
+                    _navGround[i] = NavFallThrough;
+                    _navBypass[i] = NavFallThrough;
+                    _gateOpen[i] = false;
+                }
+            }
+            MarkDirty();
+        }
+
         // ======================================================================
         //  Gates
         // ======================================================================
