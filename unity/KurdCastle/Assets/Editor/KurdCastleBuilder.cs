@@ -143,6 +143,9 @@ namespace KurdCastle.EditorTools
         // ------------------------------------------------------------------
         public static void BuildAndroidDebugFromCommandLine() { BuildDebugApk(); }
         public static void BuildAndroidReleaseFromCommandLine() { BuildReleaseAab(); }
+
+        /// <summary>Release APK (side-load / direct distribution) for pipelines.</summary>
+        public static void BuildAndroidReleaseApkFromCommandLine() { BuildReleaseApk(); }
         public static void ApplySettingsFromCommandLine() { ApplyAndroidSettings(); }
     }
 }
