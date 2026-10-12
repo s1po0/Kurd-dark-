@@ -33,6 +33,7 @@ namespace KurdCastle.Population
         readonly EconomySystem _economy;
         readonly PathfindingService _pathfinding;
         readonly NavigationGrid _nav;
+        readonly MapGrid _grid;
 
         readonly List<BuildingInstance> _constructionSites = new List<BuildingInstance>(32);
         readonly List<BuildingInstance> _staffableBuildings = new List<BuildingInstance>(64);
@@ -47,7 +48,8 @@ namespace KurdCastle.Population
 
         public WorkerJobSystem(IWorld world, UnitRegistry units, BuildingRegistry buildings,
                                UnitSystem unitMover, EconomySystem economy,
-                               PathfindingService pathfinding, NavigationGrid nav)
+                               PathfindingService pathfinding, NavigationGrid nav,
+                               MapGrid grid)
         {
             _world = world;
             _units = units;
@@ -56,6 +58,7 @@ namespace KurdCastle.Population
             _economy = economy;
             _pathfinding = pathfinding;
             _nav = nav;
+            _grid = grid;
         }
 
         public void Tick(float dt)
@@ -121,21 +124,30 @@ namespace KurdCastle.Population
 
             // Stand on (or beside) a work cell: adjacent to the building for most
             // jobs, at the deposit for gatherers whose resource is a little away.
-            Int2 workCell = FindWorkCell(building, u);
-            float distance = Vector2.Distance(u.Position2D, workCell.ToVector2Center());
+            Int2 workCell = FindWorkCell(building, u, out bool hasCell);
+            float distance = hasCell
+                ? Vector2.Distance(u.Position2D, workCell.ToVector2Center())
+                : RectDistance(u.Position2D, building.Rect);
 
-            if (distance > 1.2f)
+            // A worker who cannot stand on the ideal cell (a hut wedged into a
+            // thicket, a wall raised across the approach) still works from where
+            // it can stand instead of pacing forever and stalling the economy.
+            bool worksInPlace = !hasCell || (u.StuckTimer > 6f && distance <= 4.5f);
+
+            if (distance > 1.2f && !worksInPlace)
             {
                 u.State = UnitState.Working;
                 if (!u.HasPath && u.PendingJob == null && u.RepathTimer <= 0f)
                 {
                     u.RepathTimer = 1.5f;
-                    _unitMover.RequestPath(u, workCell);
+                    if (hasCell) _unitMover.RequestPath(u, workCell);
                 }
                 if (u.RepathTimer > 0f) u.RepathTimer -= dt;
+                u.StuckTimer += dt;
                 return;
             }
 
+            u.StuckTimer = 0f;
             u.Velocity = Vector2.zero;
             u.WorkTimer += dt;
             u.BobPhase += dt * 6f;
@@ -152,23 +164,44 @@ namespace KurdCastle.Population
             return false;
         }
 
-        Int2 FindWorkCell(BuildingInstance building, UnitInstance u)
+        /// <summary>
+        /// The cell a peasant stands on to use a building. Ring by ring so a hut
+        /// against a thicket still finds reachable ground; HasCell is false when
+        /// the building is completely boxed in.
+        /// </summary>
+        Int2 FindWorkCell(BuildingInstance building, UnitInstance u, out bool HasCell)
         {
-            // Prefer the ring around the footprint; fall back to the door side.
-            Int2 best = building.Rect.Center;
-            float bestDist = float.MaxValue;
-            for (int y = building.Rect.y - 1; y <= building.Rect.yMax; y++)
+            IntRect rect = building.Rect;
+            for (int radius = 1; radius <= 4; radius++)
             {
-                for (int x = building.Rect.x - 1; x <= building.Rect.xMax; x++)
+                Int2 best = Int2.Zero;
+                float bestDist = float.MaxValue;
+                for (int y = rect.y - radius; y < rect.yMax + radius; y++)
                 {
-                    var c = new Int2(x, y);
-                    if (building.Rect.Contains(c)) continue;
-                    if (!_nav.IsWalkable(c, NavProfile.Ground, Team.Player)) continue;
-                    float d = c.DistanceTo(u.Cell);
-                    if (d < bestDist) { bestDist = d; best = c; }
+                    for (int x = rect.x - radius; x < rect.xMax + radius; x++)
+                    {
+                        var c = new Int2(x, y);
+                        if (rect.Contains(c)) continue;
+                        if (radius > 1 &&
+                            x >= rect.x - radius + 1 && x < rect.xMax + radius - 1 &&
+                            y >= rect.y - radius + 1 && y < rect.yMax + radius - 1) continue; // inner rings already tried
+                        if (!_nav.IsWalkable(c, NavProfile.Ground, Team.Player)) continue;
+                        if (_grid.IsOccupied(c)) continue;
+                        float d = c.DistanceTo(u.Cell);
+                        if (d < bestDist) { bestDist = d; best = c; }
+                    }
                 }
+                if (bestDist < float.MaxValue) { HasCell = true; return best; }
             }
-            return best;
+            HasCell = false;
+            return rect.Center;
+        }
+
+        static float RectDistance(Vector2 p, IntRect rect)
+        {
+            float dx = Mathf.Max(rect.x - p.x, 0f, p.x - rect.xMax);
+            float dy = Mathf.Max(rect.y - p.y, 0f, p.y - rect.yMax);
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
         void StartHaul(UnitInstance u, BuildingInstance building)
@@ -240,7 +273,10 @@ namespace KurdCastle.Population
 
             // Head back to the job.
             if (jobBuilding != null && !jobBuilding.IsDestroyed)
-                _unitMover.RequestPath(u, FindWorkCell(jobBuilding, u));
+            {
+                Int2 home = FindWorkCell(jobBuilding, u, out bool reachable);
+                if (reachable) _unitMover.RequestPath(u, home);
+            }
         }
 
         void Loiter(UnitInstance u, float dt)
@@ -318,8 +354,8 @@ namespace KurdCastle.Population
                     worker.JobBuilding = site.Handle;
                     worker.State = UnitState.Working;
                     worker.Order = UnitOrder.Work;
-                    Int2 workCell = FindWorkCell(site, worker);
-                    _unitMover.RequestPath(worker, workCell);
+                    Int2 siteCell = FindWorkCell(site, worker, out bool siteReachable);
+                    if (siteReachable) _unitMover.RequestPath(worker, siteCell);
                     BuildersAssigned++;
                 }
             }
@@ -338,8 +374,8 @@ namespace KurdCastle.Population
                     worker.JobBuilding = building.Handle;
                     worker.State = UnitState.Working;
                     worker.Order = UnitOrder.Work;
-                    Int2 workCell = FindWorkCell(building, worker);
-                    _unitMover.RequestPath(worker, workCell);
+                    Int2 jobCell = FindWorkCell(building, worker, out bool jobReachable);
+                    if (jobReachable) _unitMover.RequestPath(worker, jobCell);
                     WorkersStaffed++;
                 }
             }

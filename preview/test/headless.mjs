@@ -204,6 +204,36 @@ check('peasants take jobs on their own', staffed >= 3, `staffed=${staffed}`);
 check('the starting woodlot is staffed',
   world.buildings.some((b) => b.def.id === 'hut' && b.workers.length > 0),
   `huts=${world.buildings.filter((b) => b.def.id === 'hut').length}`);
+if (process.env.DEBUG) {
+  // Diagnose a stalled woodlot: which buildings have recipes, are staffed, hold
+  // goods, and how many trees are actually in reach of each woodcutter's hut.
+  for (const b of world.buildings) {
+    if (!b.def.recipe) continue;
+    const near = (radius) => {
+      let n = 0;
+      for (let y = b.rect.y - radius; y <= b.rect.y + b.rect.h + radius; y++)
+        for (let x = b.rect.x - radius; x <= b.rect.x + b.rect.w + radius; x++)
+          if (world.map.hasTree(x, y)) n++;
+      return n;
+    };
+    console.log(`[debug] ${b.def.id} team=${b.team} site=${!!b.site} workers=${b.workers.length}/${b.def.work || 0} ` +
+      `stored=${b.stored.amount}/${b.stored.capacity}${b.stored.type ? '(' + b.stored.type + ')' : ''} ` +
+      `prod=${b.production.toFixed(2)} lastRate=${(b.lastRate || 0).toFixed(1)} trees@6=${near(6)} trees@12=${near(12)}`);
+  }
+  const workers = world.units.filter((u) => u.alive && u.def.worker);
+  const byJob = {};
+  for (const w of workers) byJob[w.job || 'idle'] = (byJob[w.job || 'idle'] || 0) + 1;
+  console.log(`[debug] wood=${world.ledger.player.wood} rate=${world.rates.wood.toFixed(2)} deliveries=${world.score.deliveries} ` +
+    `workers=${workers.length} byJob=${JSON.stringify(byJob)}`);
+  for (const w of workers) {
+    const job = world.buildings.find((b) => b.handle === w.jobBuilding);
+    const dist = job ? Math.hypot(w.x - (job.rect.x + job.rect.w / 2), w.y - (job.rect.y + job.rect.h / 2)) : -1;
+    console.log(`[debug]   ${w.def.id} job=${w.job || 'idle'}(${job ? job.def.id : '-'}) order=${w.order} state=${w.state} ` +
+      `pos=${w.x.toFixed(1)},${w.y.toFixed(1)} dist=${dist.toFixed(1)} path=${w.path.length} repath=${w.repathTimer.toFixed(1)} ` +
+      `carry=${w.carryAmount}${w.carry ? '(' + w.carry + ')' : ''} workTimer=${w.workTimer.toFixed(1)}`);
+  }
+}
+
 check('wood production rate is positive', world.rates.wood > 0,
   `rate=${world.rates.wood.toFixed(2)}/min wood=${world.ledger.player.wood}`);
 check('peasants haul production to the stockpile', world.score.deliveries > 0,

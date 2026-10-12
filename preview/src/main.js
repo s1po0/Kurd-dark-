@@ -35,12 +35,30 @@ class App {
     this.camera.focus(this.world.playerStart.x, this.world.playerStart.y, true);
 
     this.bindInput();
+    this.lockLandscape();
     this.hud.showOverlay('menu');
 
     this.last = performance.now();
     this.accumulator = 0;
     this.frame = this.frame.bind(this);
     requestAnimationFrame(this.frame);
+  }
+
+  /**
+   * The Android build is locked to landscape-left; browsers only allow the same
+   * lock from a full-screen or installed context, so failure is expected and
+   * harmless — the CSS portrait hint covers the rest.
+   */
+  lockLandscape() {
+    try {
+      const so = typeof screen !== 'undefined' && screen.orientation;
+      if (so && typeof so.lock === 'function') {
+        const p = so.lock('landscape');
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch (err) {
+      /* ignore: not supported in this browser */
+    }
   }
 
   // ===========================================================================

@@ -114,7 +114,7 @@ namespace KurdCastle.Core
             Combat = new CombatSystem(this, Units, Buildings, Construction, Projectiles, UnitMover);
             Economy = new EconomySystem(this, Resources, Buildings, Terrain, Grid);
             Population = new PopulationSystem(this, Units, Buildings, Resources, Construction);
-            WorkerJobs = new WorkerJobSystem(this, Units, Buildings, UnitMover, Economy, Pathfinding, Navigation);
+            WorkerJobs = new WorkerJobSystem(this, Units, Buildings, UnitMover, Economy, Pathfinding, Navigation, Grid);
             Commander = new EnemyCommander(this, Units, Buildings, UnitMover, Combat, FlowFields);
             Waves = new WaveDirector(this, Units);
 
@@ -209,15 +209,59 @@ namespace KurdCastle.Core
 
         void PlaceNearForest(BuildingId id, Int2 anchor, int radius)
         {
+            Int2 fallback = Int2.Zero;
+            bool hasFallback = false;
+
             for (int attempt = 0; attempt < 60; attempt++)
             {
                 var cell = new Int2(anchor.x + Rng.Range(-radius * 2, radius * 2 + 1),
                                     anchor.y + Rng.Range(-radius * 2, radius * 2 + 1));
+
+                // Keep the woodlot off the map edge and out of the middle of a
+                // thicket: a hut whose whole ring is trees has nowhere for its
+                // lumberjack to stand, and the castle never sees a log.
+                var def = BuildingCatalog.Get(id);
+                if (cell.x < 3 || cell.y < 3 ||
+                    cell.x > Grid.Width - 4 - def.Footprint.x || cell.y > Grid.Height - 4 - def.Footprint.y) continue;
+                if (OpenRing(cell, def.Footprint.x, def.Footprint.y) < 2)
+                {
+                    fallback = cell;
+                    hasFallback = true;
+                    continue;
+                }
+
                 BuildingInstance placed;
                 PlacementError error;
                 if (Construction.TryPlace(id, cell, Team.Player, true, out placed, out error)) return;
             }
+
+            if (hasFallback)
+            {
+                BuildingInstance placed;
+                PlacementError error;
+                if (Construction.TryPlace(id, fallback, Team.Player, true, out placed, out error)) return;
+            }
             // No forest in reach: skip it rather than stalling the opening.
+        }
+
+        /// <summary>How many of the eight cells around a footprint are open ground?</summary>
+        int OpenRing(Int2 cell, int w, int h)
+        {
+            int open = 0;
+            for (int y = cell.y - 1; y <= cell.y + h; y++)
+            {
+                for (int x = cell.x - 1; x <= cell.x + w; x++)
+                {
+                    if (x >= cell.x && x < cell.x + w && y >= cell.y && y < cell.y + h) continue;
+                    var c = new Int2(x, y);
+                    if (!Grid.InBounds(c)) continue;
+                    if (Terrain.HasVegetation(c)) continue;
+                    if (!Terrain.IsTerrainWalkable(c)) continue;
+                    if (Grid.IsOccupied(c) || Grid.IsReserved(c)) continue;
+                    open++;
+                }
+            }
+            return open;
         }
 
         void PlaceNearTerrain(BuildingId id, Int2 anchor, TerrainType terrain, int radius)

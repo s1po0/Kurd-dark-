@@ -164,15 +164,40 @@ export class World {
   }
 
   placeNearTrees(def, anchor, radius, team) {
+    let fallback = null;
     for (let y = anchor.y - radius; y <= anchor.y + radius; y++) {
       for (let x = anchor.x - radius; x <= anchor.x + radius; x++) {
         if (!this.map.isWalkableTerrain(x, y) || this.map.hasTree(x, y)) continue;
         if (!this.map.hasTreeWithin(x, y, def.fp[0], def.fp[1])) continue;
+        // Keep the hut off the map edge and out of the middle of a thicket: a
+        // lumberjack who cannot stand next to his own hut never delivers a log.
+        if (x < 3 || y < 3 || x > this.map.width - 4 || y > this.map.height - 4) continue;
+        if (this.walkableNeighbours(x, y, def.fp[0], def.fp[1]) < 2) {
+          fallback = fallback || { x, y };
+          continue;
+        }
         const placed = this.place(def, x, y, team, true);
         if (placed) return placed;
       }
     }
+    if (fallback) {
+      const placed = this.place(def, fallback.x, fallback.y, team, true);
+      if (placed) return placed;
+    }
     return this.placeNear(def, anchor, 10, team);
+  }
+
+  /** How many of the eight cells around a footprint are open ground? */
+  walkableNeighbours(cx, cy, w, h) {
+    let open = 0;
+    for (let y = cy - 1; y <= cy + h; y++) {
+      for (let x = cx - 1; x <= cx + w; x++) {
+        const inside = x >= cx && x < cx + w && y >= cy && y < cy + h;
+        if (inside) continue;
+        if (this.nav.walkable(x, y, NAV.GROUND) && !this.map.hasTree(x, y)) open++;
+      }
+    }
+    return open;
   }
 
   placeNearTerrain(def, anchor, terrain, radius, team) {
@@ -431,6 +456,7 @@ export class World {
       bob: this.rng.range(0, Math.PI * 2), cooldown: 0, windup: 0, scanTimer: 0,
       target: -1, targetBuilding: -1, job: def.worker ? 'idle' : null, jobBuilding: -1,
       carry: null, carryAmount: 0, garrisoned: false, building: -1, selected: false,
+      stuckTimer: 0,
       flash: 0, repathTimer: 0, combatTimer: 0, workTimer: 0, morale: 100, attackBuilding: -1,
       retreatCount: 0, regroupTimer: 0, deathTimer: 0,
     };
@@ -966,33 +992,62 @@ export class World {
     }
   }
 
+  /**
+   * The cell a worker stands on to use a building. Searches ring by ring so a
+   * hut wedged against a thicket still gets a reachable spot instead of the
+   * unwalkable centre of its own footprint (which used to strand its lumberjack
+   * for the rest of the match). Returns null when there is no open ground at
+   * all, and the caller then lets the worker work where it stands.
+   */
+  /** Distance from a unit to the nearest edge of a rect (0 when inside). */
+  rectDistance(unit, rect) {
+    const dx = Math.max(rect.x - unit.x, 0, unit.x - (rect.x + rect.w));
+    const dy = Math.max(rect.y - unit.y, 0, unit.y - (rect.y + rect.h));
+    return Math.hypot(dx, dy);
+  }
+
   findWorkCell(worker, building) {
-    let best = this.rectCenter(building.rect);
-    let bestDist = Infinity;
-    for (let y = building.rect.y - 1; y <= building.rect.y + building.rect.h; y++) {
-      for (let x = building.rect.x - 1; x <= building.rect.x + building.rect.w; x++) {
-        if (x >= building.rect.x && x < building.rect.x + building.rect.w &&
-            y >= building.rect.y && y < building.rect.y + building.rect.h) continue;
-        if (!this.nav.walkable(x, y, NAV.GROUND)) continue;
-        const d = Math.hypot(x - worker.x, y - worker.y);
-        if (d < bestDist) { bestDist = d; best = { x, y }; }
+    const rect = building.rect;
+    for (let radius = 1; radius <= 4; radius++) {
+      let best = null, bestDist = Infinity;
+      for (let y = rect.y - radius; y < rect.y + rect.h + radius; y++) {
+        for (let x = rect.x - radius; x < rect.x + rect.w + radius; x++) {
+          if (x >= rect.x && x < rect.x + rect.w && y >= rect.y && y < rect.y + rect.h) continue;
+          if (radius > 1 &&
+              x >= rect.x - radius + 1 && x < rect.x + rect.w + radius - 1 &&
+              y >= rect.y - radius + 1 && y < rect.y + rect.h + radius - 1) continue; // inner rings already tried
+          if (!this.nav.walkable(x, y, NAV.GROUND)) continue;
+          if (this.grid.isOccupied(x, y)) continue;
+          const d = Math.hypot(x - worker.x, y - worker.y);
+          if (d < bestDist) { bestDist = d; best = { x, y }; }
+        }
       }
+      if (best) return best;
     }
-    return best;
+    return null;
   }
 
   tickWorking(unit, dt, building) {
     unit.order = 'work';
     unit.state = 'working';
     const workCell = this.findWorkCell(unit, building);
-    if (Math.hypot(unit.x - (workCell.x + 0.5), unit.y - (workCell.y + 0.5)) > 1.2) {
+    const standoff = workCell
+      ? Math.hypot(unit.x - (workCell.x + 0.5), unit.y - (workCell.y + 0.5))
+      : this.rectDistance(unit, building.rect);
+    // A worker who cannot reach the ideal cell (boxed-in hut, a wall raised over
+    // the approach) still works from wherever it can stand, rather than pacing
+    // forever and silently stalling the castle's economy.
+    const stuckAllowed = !workCell || (unit.stuckTimer > 6 && standoff <= 4.5);
+    if (standoff > 1.2 && !stuckAllowed) {
       if (!unit.path.length && unit.repathTimer <= 0) {
         this.assignPath(unit, workCell);
         unit.repathTimer = 1.5;
       }
       unit.repathTimer -= dt;
+      unit.stuckTimer += dt;
       return;
     }
+    unit.stuckTimer = 0;
     unit.workTimer += dt;
     unit.bob += dt * 6;
     if (building.stored.amount > 0 && building.stored.amount >= building.stored.capacity / 2) {

@@ -78,6 +78,13 @@ namespace KurdCastle.Combat
         public int CarryAmount;
         public float WorkTimer;
 
+        /// <summary>
+        /// Seconds this worker has spent trying and failing to reach its work
+        /// cell. After a few seconds it gives up and works from where it stands,
+        /// which keeps a boxed-in woodlot from stalling the whole economy.
+        /// </summary>
+        public float StuckTimer;
+
         // ---- combat ----
         public int TargetHandle = Handle.Invalid;
         public float AttackCooldown;

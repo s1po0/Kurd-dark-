@@ -27,10 +27,16 @@ no binary assets at all.
 The preview is not a mock-up: it implements the same balance tables, the same
 popularity ledger, the same pathfinding surfaces and the same wave director. It is
 how the game was verified in an environment with no Unity install — and it earned
-its keep, because running it exposed three genuine simulation bugs that were then
-fixed on the Unity side too (popularity had no neutral baseline, retreating raiders
-never healed and stalled waves forever, and map generation could produce a world
-with no stone).
+its keep, because running it exposed four genuine simulation bugs that were then
+fixed on the Unity side too:
+
+* popularity was a ledger of deltas with no neutral baseline, so a well-run castle
+  drifted to zero and bled peasants;
+* retreating raiders never healed, so a broken wave could stall forever;
+* map generation could produce a world with no stone at all;
+* a woodcutter's hut placed inside a thicket had nowhere for its lumberjack to stand
+  and the castle never saw a log — a stuck-worker bug that only appeared on certain
+  seeds (`SEED=2014803555` still reproduces it against the old code).
 
 **Play it now:**
 
