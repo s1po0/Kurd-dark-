@@ -2,18 +2,22 @@ name: Publish playable preview
 
 # Publishes preview/ to GitHub Pages, which gives the prototype a real HTTPS URL:
 #   https://<owner>.github.io/<repo>/
-# That URL is what you play on a phone, what you point a Trusted Web Activity
+# That URL is what you play on a phone, what you can point a Trusted Web Activity
 # build at, and what you share with testers.
 #
 # One-time setup: repository Settings -> Pages -> Build and deployment ->
-# Source: GitHub Actions. After that, every push to main (or a manual run)
-# republishes the game.
+# Source: GitHub Actions. Until that is done, this workflow still runs the tests
+# and uploads the site as an artifact, and says so in a notice instead of failing.
+#
+# The deployed site is a complete installable PWA: manifest, service worker and
+# icons are all in preview/, so the URL can be added to a phone's home screen.
 
 on:
   push:
     branches: [main]
     paths:
       - 'preview/**'
+      - 'tools/check_pwa.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -29,18 +33,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Sanity-check the build before publishing
         run: |
-          node --check preview/src/main.js
-          node --check preview/src/sim.js
-          node --check preview/src/render.js
-          node --check preview/src/ui.js
-          node --check preview/src/map.js
-          node --check preview/src/balance.js
+          for f in main sim render ui map balance; do node --check "preview/src/$f.js"; done
           node --check preview/sw.js
+          node --check preview/pwa.js
           python3 -c "import json;json.load(open('preview/manifest.webmanifest'))"
 
       - name: Run the headless suite
@@ -52,13 +54,41 @@ jobs:
       - name: Disable Jekyll processing
         run: touch preview/.nojekyll
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      # Pages may not be switched on yet, and enabling it needs repository admin
+      # rights that a workflow token does not have. Probe rather than assume.
+      - id: pages
+        name: Is GitHub Pages enabled?
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages")
+          echo "Pages API returned $code"
+          if [ "$code" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure Pages
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
         with:
           path: preview
 
+      - name: Pages is not enabled (nothing broken)
+        if: steps.pages.outputs.enabled != 'true'
+        run: |
+          echo "::notice title=GitHub Pages is not enabled yet::Turn it on once: Settings → Pages → Build and deployment → Source: GitHub Actions, then re-run this workflow. The suite passed and the site is attached to this run as an artifact in the meantime."
+
   deploy:
     needs: build
+    if: needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
