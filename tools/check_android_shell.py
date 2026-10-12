@@ -79,9 +79,30 @@ def check_gradle():
     if "exclude 'test/**'" not in app:
         err("the headless test suite would be bundled into the APK")
 
-    # The bundling task must actually run before assets are merged.
-    if "preBuild" not in app and "merge" not in app:
+    # The bundling task must actually run before assets are merged, without
+    # relying on task names that may not exist yet at configuration time.
+    if "dependsOn syncWebAssets" not in app:
         err("nothing makes the bundling task run during a build")
+    if "tasks.named('preBuild')" in app or 'tasks.named("preBuild")' in app:
+        err("tasks.named('preBuild') fails when the plugin has not registered it; "
+            "use tasks.matching { ... }.configureEach")
+
+    # addGeneratedSourceDirectory expects a DirectoryProperty, which a plain Copy
+    # task does not expose — that wiring failed the first CI run.
+    if "addGeneratedSourceDirectory" in app:
+        err("addGeneratedSourceDirectory is wired to a Copy task, which has no "
+            "DirectoryProperty output; copy into src/main/assets instead")
+
+    # Assets must land in the module's own source dir, or AGP never sees them.
+    # Check the *definition* of the destination, not a mention in a comment.
+    dest = re.search(r"def\s+webAssetsDir\s*=\s*file\(\s*[\"']([^\"']+)[\"']\s*\)", app)
+    if not dest:
+        err("app/build.gradle does not define where the web assets are copied to")
+    elif "src/main/assets" not in dest.group(1):
+        err(f"web assets are copied to {dest.group(1)}, outside app/src/main/assets, "
+            "so the Android plugin never packages them")
+    if not re.search(r"into\s+webAssetsDir", app):
+        err("the bundling task does not copy into the assets directory it defines")
 
     NOTES.append("gradle config OK (assets bundled from preview/ before merge)")
 

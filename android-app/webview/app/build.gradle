@@ -46,7 +46,9 @@ android {
     }
 
     packaging {
-        resources.excludes += ['META-INF/*.version', 'DebugProbesKt.bin']
+        resources {
+            excludes += ['META-INF/*.version', 'DebugProbesKt.bin']
+        }
     }
 }
 
@@ -58,6 +60,10 @@ dependencies {
 
 // -----------------------------------------------------------------------------
 //  Bundle the game: preview/ -> app/src/main/assets/
+//
+//  A plain Copy into the module's own assets source directory, rather than the
+//  generated-source-directory API: simpler, and it behaves the same for every
+//  current and future variant.
 // -----------------------------------------------------------------------------
 def previewDir = rootProject.file('../../preview')
 def webAssetsDir = file("$projectDir/src/main/assets")
@@ -65,14 +71,17 @@ def webAssetsDir = file("$projectDir/src/main/assets")
 def syncWebAssets = tasks.register('syncWebAssets', Copy) {
     group = 'kurd castle'
     description = 'Copies the playable web build (preview/) into the APK assets.'
+
     from(previewDir) {
         exclude 'test/**'      // the headless suite has no business on a phone
         exclude '**/*.md'      // READMEs and notes
         exclude '.nojekyll'
     }
     into webAssetsDir
+
     // Cheap copy, and a stale asset folder is much worse than a redundant one.
     outputs.upToDateWhen { false }
+
     doFirst {
         logger.lifecycle("Bundling web build from ${previewDir}")
     }
@@ -82,14 +91,16 @@ def syncWebAssets = tasks.register('syncWebAssets', Copy) {
             throw new GradleException("Web build missing: ${index} was not produced. " +
                     "Is preview/index.html present?")
         }
+        logger.lifecycle("Bundled ${webAssetsDir.listFiles()?.length ?: 0} top-level asset entries")
     }
 }
 
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        // Runs before any asset merging for every variant (debug, release, ...).
-        def mergeTask = tasks.named("merge${variant.name.capitalize()}Assets")
-        mergeTask.configure { dependsOn syncWebAssets }
+// Run the copy before anything that consumes assets. `matching`/`configureEach`
+// rather than `named`, so this stays safe no matter when the Android plugin
+// registers its tasks.
+tasks.matching { it.name == 'preBuild' }.configureEach { dependsOn syncWebAssets }
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+        task.dependsOn syncWebAssets
     }
 }
-tasks.named('preBuild').configure { dependsOn syncWebAssets }

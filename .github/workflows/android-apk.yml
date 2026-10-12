@@ -61,13 +61,52 @@ jobs:
       - name: Check the shell configuration (no SDK needed)
         run: python3 tools/check_android_shell.py
 
+      # Gradle output is tee'd to build.log and, on failure, the interesting lines
+      # are re-emitted as ::error:: annotations. Those are readable through the
+      # API from anywhere (unlike the raw job log), which makes a failed build
+      # diagnosable without a browser.
       - name: Assemble debug APK
         working-directory: android-app/webview
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee build-debug.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            echo "--- the failing build, abridged ---"
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-debug.log | head -25
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-debug.log | head -25 | while IFS= read -r line; do
+              echo "::error file=android-app/webview/app/build.gradle::$line"
+            done
+            exit "$code"
+          fi
 
       - name: Assemble release APK
         working-directory: android-app/webview
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build-release.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-release.log | head -25 | while IFS= read -r line; do
+              echo "::error file=android-app/webview/app/build.gradle::$line"
+            done
+            exit "$code"
+          fi
+
+      - name: Bundled asset inventory
+        working-directory: android-app/webview
+        run: |
+          find app/src/main/assets -type f | sort
+          echo "files: $(find app/src/main/assets -type f | wc -l)"
+
+      - name: Upload Gradle logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs
+          path: |
+            android-app/webview/build-*.log
+          if-no-files-found: ignore
 
       - name: Verify the APK really contains the game
         working-directory: android-app/webview
