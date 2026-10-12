@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches Balance.Ui / the preview palette, so the boot flash is invisible -->
+    <color name="boot_background">#14100D</color>
+</resources>

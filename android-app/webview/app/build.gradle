@@ -1,0 +1,106 @@
+// -----------------------------------------------------------------------------
+//  Kurd Castle — Android shell module
+//
+//  The playable web build in preview/ is copied into app/src/main/assets by the
+//  :app:syncWebAssets task before assets are merged, so the repository keeps
+//  exactly one copy of the game (the sources under preview/src) and the APK is
+//  self-contained: no server, no network, no INTERNET permission.
+//
+//  Build:  gradle -p android-app/webview :app:assembleDebug
+// -----------------------------------------------------------------------------
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.kurdcastle.prototype'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.kurdcastle.prototype'
+        minSdk 24               // Android 7.0 — the WebView updates itself from Play
+        targetSdk 34
+        versionCode 1
+        versionName '0.9.0-prototype'
+        resConfigs 'en'
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // Debug-signed so `assembleRelease` still yields an installable APK.
+            // Point signingConfigs at your own keystore before a store upload
+            // (see android-app/README.md).
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/*.version', 'DebugProbesKt.bin']
+        }
+    }
+}
+
+dependencies {
+    // WebViewAssetLoader serves the bundled files over a synthetic https origin,
+    // which is what ES modules (and the service worker) require.
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
+
+// -----------------------------------------------------------------------------
+//  Bundle the game: preview/ -> app/src/main/assets/
+//
+//  A plain Copy into the module's own assets source directory, rather than the
+//  generated-source-directory API: simpler, and it behaves the same for every
+//  current and future variant.
+// -----------------------------------------------------------------------------
+def previewDir = rootProject.file('../../preview')
+def webAssetsDir = file("$projectDir/src/main/assets")
+
+def syncWebAssets = tasks.register('syncWebAssets', Copy) {
+    group = 'kurd castle'
+    description = 'Copies the playable web build (preview/) into the APK assets.'
+
+    from(previewDir) {
+        exclude 'test/**'      // the headless suite has no business on a phone
+        exclude '**/*.md'      // READMEs and notes
+        exclude '.nojekyll'
+    }
+    into webAssetsDir
+
+    // Cheap copy, and a stale asset folder is much worse than a redundant one.
+    outputs.upToDateWhen { false }
+
+    doFirst {
+        logger.lifecycle("Bundling web build from ${previewDir}")
+    }
+    doLast {
+        def index = new File(webAssetsDir, 'index.html')
+        if (!index.exists()) {
+            throw new GradleException("Web build missing: ${index} was not produced. " +
+                    "Is preview/index.html present?")
+        }
+        logger.lifecycle("Bundled ${webAssetsDir.listFiles()?.length ?: 0} top-level asset entries")
+    }
+}
+
+// Run the copy before anything that consumes assets. `matching`/`configureEach`
+// rather than `named`, so this stays safe no matter when the Android plugin
+// registers its tasks.
+tasks.matching { it.name == 'preBuild' }.configureEach { dependsOn syncWebAssets }
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+        task.dependsOn syncWebAssets
+    }
+}

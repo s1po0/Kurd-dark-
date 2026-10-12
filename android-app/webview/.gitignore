@@ -1,0 +1,9 @@
+# Generated at build time from preview/ — never commit a second copy of the game
+app/src/main/assets/
+local.properties
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.keystore

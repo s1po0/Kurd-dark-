@@ -1,0 +1,17 @@
+// Kurd Castle — Android shell (single :app module)
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'KurdCastle'
+include ':app'

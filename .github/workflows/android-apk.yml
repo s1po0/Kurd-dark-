@@ -1,0 +1,175 @@
+name: Build Android APK
+
+# Builds the installable Android app (the WebView shell around the playable
+# build) on GitHub's own runners, which ship a JDK and the Android SDK — so no
+# local toolchain is needed to get an APK.
+#
+#   * every push touching the shell or the game -> APK uploaded as an artifact
+#   * pushing a tag like v0.9.0-prototype        -> APK attached to a Release
+#   * workflow_dispatch                          -> build on demand
+#
+# Download afterwards: Actions ▸ this run ▸ Artifacts, or the Releases page.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main', 'arena/**']
+    tags: ['v*']
+    paths-ignore:
+      - '**/*.md'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Assemble debug + release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The runner image already carries the Android SDK at $ANDROID_HOME; this
+      # only guarantees the exact platform and build tools the project pins.
+      - name: Ensure Android SDK packages
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKMGR" ]; then
+            yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+            "$SDKMGR" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+          fi
+          echo "sdk.dir=$ANDROID_HOME" > android-app/webview/local.properties
+          ls "$ANDROID_HOME/platforms" || true
+
+      - name: Install Gradle
+        run: |
+          curl -sSLo /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          sudo unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
+
+      - name: Gradle version
+        run: gradle --version | head -6
+
+      - name: Check the shell configuration (no SDK needed)
+        run: python3 tools/check_android_shell.py
+
+      # Gradle output is tee'd to build.log and, on failure, the interesting lines
+      # are re-emitted as ::error:: annotations. Those are readable through the
+      # API from anywhere (unlike the raw job log), which makes a failed build
+      # diagnosable without a browser.
+      - name: Assemble debug APK
+        working-directory: android-app/webview
+        run: |
+          set +e
+          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee build-debug.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            echo "--- the failing build, abridged ---"
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-debug.log | head -25
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-debug.log | head -25 | while IFS= read -r line; do
+              echo "::error file=android-app/webview/app/build.gradle::$line"
+            done
+            exit "$code"
+          fi
+
+      - name: Assemble release APK
+        working-directory: android-app/webview
+        run: |
+          set +e
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build-release.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            grep -nE "error:|FAILURE:|What went wrong|Caused by|Execution failed|Could not|A problem occurred|^> " build-release.log | head -25 | while IFS= read -r line; do
+              echo "::error file=android-app/webview/app/build.gradle::$line"
+            done
+            exit "$code"
+          fi
+
+      - name: Bundled asset inventory
+        working-directory: android-app/webview
+        run: |
+          find app/src/main/assets -type f | sort
+          echo "files: $(find app/src/main/assets -type f | wc -l)"
+
+      - name: Upload Gradle logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs
+          path: |
+            android-app/webview/build-*.log
+          if-no-files-found: ignore
+
+      - name: Verify the APK really contains the game
+        working-directory: android-app/webview
+        run: |
+          set -e
+          APK=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          echo "APK: $APK ($(du -h "$APK" | cut -f1))"
+          unzip -l "$APK" | grep -E 'assets/(index\.html|src/main\.js|style\.css|icons/)' | head -10
+          COUNT=$(unzip -l "$APK" | grep -c 'assets/')
+          echo "bundled asset entries: $COUNT"
+          if [ "$COUNT" -lt 10 ]; then
+            echo "The APK does not look like it contains the game." >&2
+            exit 1
+          fi
+          unzip -l "$APK" | grep -q 'classes.dex' || { echo "no classes.dex" >&2; exit 1; }
+          unzip -l "$APK" | grep -q 'AndroidManifest.xml' || { echo "no manifest" >&2; exit 1; }
+
+      - name: Collect artifacts
+        run: |
+          set -e
+          mkdir -p out
+          cp android-app/webview/app/build/outputs/apk/debug/*.apk out/ 2>/dev/null || true
+          cp android-app/webview/app/build/outputs/apk/release/*.apk out/ 2>/dev/null || true
+          # stable, human-readable names
+          for f in out/*.apk; do
+            case "$f" in
+              *debug*) mv "$f" out/KurdCastle-0.9.0-debug.apk ;;
+              *release*) mv "$f" out/KurdCastle-0.9.0-release.apk ;;
+            esac
+          done
+          ls -lh out
+          (cd out && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: kurd-castle-apk
+          path: out/*
+          if-no-files-found: error
+
+      - name: Attach to release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/*.apk
+            out/SHA256SUMS.txt
+          generate_release_notes: true
+          body: |
+            ## Kurd Castle ${{ github.ref_name }}
+
+            Installable Android build of the prototype, straight from the
+            repository sources by GitHub Actions (`android-apk.yml`).
+
+            * `KurdCastle-0.9.0-debug.apk` — side-load this one.
+              `adb install -r KurdCastle-0.9.0-debug.apk`, or copy it to the phone
+              and tap it. It installs next to any other build (separate
+              application id, `…prototype.debug`).
+            * `KurdCastle-0.9.0-release.apk` — same game, debug-signed, no `-debug`
+              suffix. Re-sign it with your own keystore before distributing.
+
+            Self-contained and offline: the game ships inside the APK and the app
+            requests **no permissions at all** — not even INTERNET.
+
+            Landscape, Android 7.0 (API 24) and newer, ARM64 + ARMv7.
+            `SHA256SUMS.txt` verifies the download.
