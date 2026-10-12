@@ -67,6 +67,17 @@ red ones are not — the toast tells you which rule failed.
   tower, and broken units fall back to the camp to patch themselves up (or desert
   if they keep losing).
 
+## Look
+
+The browser preview is drawn in a Stronghold-inspired style, with original
+artwork generated in code: a sunlit daytime sky, bright meadow grass with tufts
+and wildflowers, sandy tracks, a rippling lake, pebbled stone, limestone walls
+with mortar courses, terracotta roofs for your castle and dark timber roofs for
+raiders, and parchment-and-wood HUD panels with gold trim. None of the art, names
+or UI come from a commercial game. The colours live in `src/render.js`
+(`TERRAIN_COLOR`, the building `palette`) and `style.css` (`:root`), and the
+simulation is unchanged by them.
+
 ## Verification
 
 ```bash

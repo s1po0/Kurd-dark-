@@ -18,7 +18,11 @@ const frameCallbacks = [];
 function noop() {}
 
 function makeContext2D() {
-  const store = {};
+  const store = {
+    // Gradients are read back (addColorStop), so they need a real return value.
+    createLinearGradient: () => ({ addColorStop() {} }),
+    createRadialGradient: () => ({ addColorStop() {} }),
+  };
   return new Proxy(store, {
     get(target, key) {
       if (key in target) return target[key];

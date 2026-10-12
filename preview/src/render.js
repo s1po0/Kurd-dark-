@@ -14,16 +14,22 @@ export const TILE_W = 44;
 export const TILE_H = 22;
 export const HEIGHT_PX = 13;
 
+// Stronghold-style palette: bright, sunlit meadow greens, warm earth tracks,
+// honey sand and cool stone. Original colours — nothing is sampled from a
+// commercial game.
 const TERRAIN_COLOR = {
-  [TERRAIN.WATER]: [47, 95, 140],
-  [TERRAIN.GRASS]: [74, 122, 60],
-  [TERRAIN.ROUGH]: [107, 106, 82],
-  [TERRAIN.DIRT]: [122, 98, 68],
-  [TERRAIN.SAND]: [185, 169, 120],
-  [TERRAIN.ROCK]: [141, 138, 132],
-  [TERRAIN.IRON]: [111, 106, 114],
-  [TERRAIN.FERTILE]: [127, 143, 60],
+  [TERRAIN.WATER]: [58, 128, 168],
+  [TERRAIN.GRASS]: [122, 170, 74],
+  [TERRAIN.ROUGH]: [154, 146, 100],
+  [TERRAIN.DIRT]: [166, 124, 78],
+  [TERRAIN.SAND]: [212, 192, 130],
+  [TERRAIN.ROCK]: [164, 158, 144],
+  [TERRAIN.IRON]: [128, 120, 128],
+  [TERRAIN.FERTILE]: [156, 178, 78],
 };
+
+const SKY_TOP = '#7fb4df';
+const SKY_HORIZON = '#eadfb4';
 
 function shade(rgb, factor) {
   const r = Math.max(0, Math.min(255, Math.round(rgb[0] * factor)));
@@ -178,16 +184,54 @@ export class IsoView {
         ctx.fillStyle = shade(base, variance);
         ctx.fill();
 
+        // Soft bevel so neighbouring tiles read as a sunlit meadow, not a checkerboard.
+        ctx.strokeStyle = 'rgba(40,60,20,0.10)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
         if (type === TERRAIN.WATER) {
-          ctx.fillStyle = 'rgba(120,190,230,0.10)';
+          ctx.fillStyle = 'rgba(150,215,240,0.14)';
           ctx.fill();
+          ctx.strokeStyle = 'rgba(220,245,255,0.35)';
+          ctx.lineWidth = 1;
+          const ry = cy + (hash2(x, y + 9) - 0.5) * TILE_H * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(cx - 8, ry);
+          ctx.quadraticCurveTo(cx, ry - 2.5, cx + 8, ry);
+          ctx.stroke();
+        }
+        if (type === TERRAIN.GRASS || type === TERRAIN.FERTILE || type === TERRAIN.ROUGH) {
+          // grass tufts and the odd wildflower
+          const n = 3 + Math.floor(hash2(x + 3, y + 1) * 3);
+          for (let i = 0; i < n; i++) {
+            const tx = cx + (hash2(x * 17 + i, y) - 0.5) * TILE_W * 0.7;
+            const ty = cy + (hash2(x, y * 17 + i) - 0.5) * TILE_H * 0.6;
+            ctx.strokeStyle = i % 2 ? 'rgba(70,118,38,0.55)' : 'rgba(170,214,108,0.55)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - 1.5, ty - 3);
+            ctx.moveTo(tx, ty);
+            ctx.lineTo(tx + 1.5, ty - 3.5);
+            ctx.stroke();
+          }
+          if (type === TERRAIN.GRASS && hash2(x * 3, y * 3) > 0.9) {
+            ctx.fillStyle = hash2(x, y) > 0.5 ? '#f4e9a8' : '#f2c4d0';
+            ctx.beginPath();
+            ctx.arc(cx + (hash2(y, x) - 0.5) * 16, cy + 2, 1.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         if (type === TERRAIN.ROCK || type === TERRAIN.IRON) {
-          ctx.fillStyle = 'rgba(255,255,255,0.06)';
           for (let i = 0; i < 3; i++) {
             const hx = hash2(x * 13 + i, y * 7 + i);
             const hy = hash2(x * 5 - i, y * 11 + i);
-            ctx.fillRect(cx + (hx - 0.5) * TILE_W * 0.6, cy + (hy - 0.5) * TILE_H * 0.6, 2, 2);
+            const px = cx + (hx - 0.5) * TILE_W * 0.6;
+            const py = cy + (hy - 0.5) * TILE_H * 0.6;
+            ctx.fillStyle = 'rgba(70,64,56,0.35)';
+            ctx.beginPath(); ctx.ellipse(px, py + 1, 2.6, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = type === TERRAIN.IRON ? 'rgba(180,150,120,0.55)' : 'rgba(235,230,218,0.5)';
+            ctx.beginPath(); ctx.ellipse(px, py, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
         if (type === TERRAIN.FERTILE) {
@@ -268,9 +312,11 @@ export class IsoView {
     const ground = [project(x0, y0, 0), project(x1, y0, 0), project(x1, y1, 0), project(x0, y1, 0)];
     const top = [project(x0, y0, 1), project(x1, y0, 1), project(x1, y1, 1), project(x0, y1, 1)];
 
+    // Player: warm limestone walls and terracotta roofs. Raiders: weathered
+    // timber, dark hide and slate-brown roofs, so the two sides read at a glance.
     const palette = team === TEAM.PLAYER
-      ? { top: 'rgba(176,170,152,0.97)', side: 'rgba(120,112,96,0.97)', roof: '#7c4a3a', rim: 'rgba(24,22,18,0.75)' }
-      : { top: 'rgba(150,118,102,0.97)', side: 'rgba(101,76,66,0.97)', roof: '#5e3327', rim: 'rgba(28,18,12,0.8)' };
+      ? { top: 'rgba(226,214,184,0.98)', side: 'rgba(186,170,138,0.98)', roof: '#b4532e', rim: 'rgba(60,44,28,0.7)', mortar: 'rgba(96,78,54,0.28)' }
+      : { top: 'rgba(160,122,88,0.98)', side: 'rgba(118,86,60,0.98)', roof: '#4f3026', rim: 'rgba(36,22,14,0.8)', mortar: 'rgba(48,30,18,0.3)' };
 
     if (def.isMoat) {
       ctx.fillStyle = 'rgba(38,72,110,0.92)';
@@ -293,7 +339,7 @@ export class IsoView {
     for (let i = 1; i < 4; i++) ctx.lineTo(ground[i].x, ground[i].y + 2);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = shade([90, 84, 72], 1);
+    ctx.fillStyle = shade([134, 122, 98], 1);
     ctx.beginPath();
     ctx.moveTo(ground[0].x, ground[0].y);
     for (let i = 1; i < 4; i++) ctx.lineTo(ground[i].x, ground[i].y);
@@ -317,6 +363,19 @@ export class IsoView {
       ctx.lineTo(tl.x, tl.y);
       ctx.closePath();
       ctx.fill();
+      // Masonry courses clipped to the face: horizontal mortar lines.
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = palette.mortar;
+      ctx.lineWidth = 1;
+      const top = Math.min(tl.y, tr.y), bottom = Math.max(bl.y, br.y);
+      ctx.beginPath();
+      for (let yy = Math.floor(top / 4) * 4; yy <= bottom; yy += 4) {
+        ctx.moveTo(bl.x - 2, yy + 0.5);
+        ctx.lineTo(br.x + 2, yy + 0.5);
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
     // 3. top face
@@ -349,13 +408,30 @@ export class IsoView {
       ctx.lineTo(r2.x, r2.y); ctx.lineTo(r1.x, r1.y);
       ctx.closePath(); ctx.fill();
 
-      ctx.fillStyle = shade([124, 74, 58], 1.18);
+      ctx.fillStyle = team === TEAM.PLAYER ? 'rgb(205,104,62)' : 'rgb(96,60,46)';
       ctx.beginPath();
       ctx.moveTo(frontA.x, frontA.y); ctx.lineTo(frontB.x, frontB.y);
       ctx.lineTo(r2.x, r2.y); ctx.lineTo(r1.x, r1.y);
       ctx.closePath(); ctx.fill();
 
-      ctx.strokeStyle = 'rgba(30,20,16,0.6)';
+      // Roof tile rows on the sunlit slope.
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(frontA.x, frontA.y); ctx.lineTo(frontB.x, frontB.y);
+      ctx.lineTo(r2.x, r2.y); ctx.lineTo(r1.x, r1.y);
+      ctx.closePath(); ctx.clip();
+      ctx.strokeStyle = 'rgba(90,30,14,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let k = 1; k < 6; k++) {
+        const t = k / 6;
+        ctx.moveTo(frontA.x + (r1.x - frontA.x) * t - 2, frontA.y + (r1.y - frontA.y) * t);
+        ctx.lineTo(frontB.x + (r2.x - frontB.x) * t + 2, frontB.y + (r2.y - frontB.y) * t);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(40,22,14,0.6)';
       ctx.stroke();
       void a; void b;
     }
@@ -413,7 +489,11 @@ export class IsoView {
       if (this.terrainChecksum() !== this.terrainSignature) this.bakeTerrain();
     }
 
-    ctx.fillStyle = '#16281f';
+    const sky = ctx.createLinearGradient(0, 0, 0, this.viewHeight);
+    sky.addColorStop(0, SKY_TOP);
+    sky.addColorStop(0.55, SKY_HORIZON);
+    sky.addColorStop(1, '#b9c98a');
+    ctx.fillStyle = sky;
     ctx.fillRect(0, 0, this.viewWidth, this.viewHeight);
 
     // Terrain (baked once, transformed with the camera each frame)

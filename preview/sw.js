@@ -6,7 +6,7 @@
    build needs in order to behave like a real app.
    --------------------------------------------------------------------------- */
 
-const CACHE = 'kurd-castle-v1';
+const CACHE = 'kurd-castle-v2';
 
 const SHELL = [
   './',
