@@ -38,7 +38,18 @@ fixed on the Unity side too:
   and the castle never saw a log — a stuck-worker bug that only appeared on certain
   seeds (`SEED=2014803555` still reproduces it against the old code).
 
-**Play it now:**
+**Install it on Android:**
+
+| | |
+| --- | --- |
+| ⬇ **[KurdCastle-0.9.0-debug.apk](https://github.com/s1po0/Kurd-dark-/releases/latest)** | signed, installable, built by CI from this repository — download on the phone and tap it, or `adb install -r` |
+| ▶ **[Play in a browser](https://s1po0.github.io/Kurd-dark-/)** | the same game as an installable PWA (available once GitHub Pages is switched on — see below) |
+
+The APK is **self-contained and offline** (the game ships inside it, no server,
+and the app requests no permissions at all) and runs on Android 7.0+, landscape.
+Every push rebuilds it: `Actions ▸ Build Android APK`, or a `v*` tag for a release.
+
+**Play it locally:**
 
 ```bash
 python3 -m http.server 8080 --bind 0.0.0.0 --directory preview
