@@ -80,21 +80,29 @@ preview/                          Playable browser mirror (see preview/README.md
                                   index.html, style.css, src/*.js, test/headless.mjs,
                                   manifest.webmanifest + sw.js + icons/ (installable
                                   PWA), pwa.js
-android-app/                      Android packaging (see android-app/README.md):
-                                  Bubblewrap Trusted Web Activity config, store icon
+android-app/                      Android packaging (see android-app/README.md)
+  webview/                        Self-contained app: one Gradle module, a full-screen
+                                  WebView, the game bundled into assets at build time
+  twa/                            Bubblewrap Trusted Web Activity config, store icon
                                   and feature graphic, Digital Asset Links template
+.github/workflows/android-apk.yml Builds + verifies the APK on GitHub runners and
+                                  uploads it as an artifact (or a Release for tags)
 .github/workflows/pages.yml       Publishes preview/ to GitHub Pages, after running
                                   the headless test suite
-tools/check_csharp.py             Static checker used because this repo has no CI
-tools/make_icons.py               Regenerates every icon from code (Pillow)
+tools/check_csharp.py             Static checker for the C# sources (no toolchain here)
+tools/check_pwa.py                Validates the manifest, service worker, icons, TWA config
+tools/check_android_shell.py      Validates the Android shell without an Android SDK
+tools/make_icons.py               Regenerates every icon and the store art from code
 tools/configure_twa.py            Writes the TWA manifest + assetlinks.json for your host
 ```
 
 Run the two verification gates from the repository root:
 
 ```bash
-python3 tools/check_csharp.py      # C# : braces, enums, Balance refs, namespaces
-node preview/test/headless.mjs     # JS : 60 behavioural checks, random seed
+python3 tools/check_csharp.py      # C#  : braces, enums, Balance refs, namespaces
+node preview/test/headless.mjs     # JS  : 60 behavioural checks, random seed
+python3 tools/check_pwa.py         # PWA : manifest, service worker, icons, TWA config
+python3 tools/check_android_shell.py  # APK shell: manifest, activity, Gradle wiring
 ```
 
 ---
@@ -167,12 +175,17 @@ sprites, throttled minimap, signature-guarded HUD rebuilds).
 
 ## Building the Android APK — step by step
 
-> **In a hurry, or no Unity install handy?** `android-app/README.md` has a second,
-> fully scriptable route: the browser build wrapped into a real signed **APK and
-> Play-Store AAB** with Bubblewrap (a Trusted Web Activity). It needs only Node,
-> a JDK and the Android SDK — all of which install themselves — and takes about
-> fifteen minutes end to end. Store icon and feature graphic are already
-> generated in `android-app/twa/`.
+> **Want an APK without installing anything?** Push your branch: the workflow
+> `.github/workflows/android-apk.yml` builds the Android app on GitHub's runners,
+> checks that the APK really contains the game, and uploads it as an artifact —
+> **Actions ▸ Build Android APK ▸ Artifacts ▸ `kurd-castle-apk`**. Push a `v*` tag
+> and both APKs are attached to a GitHub Release instead, ready to install.
+>
+> Three other routes live in `android-app/README.md`: build the same WebView shell
+> locally (`android-app/webview/`), wrap the *hosted* build in a Trusted Web
+> Activity with Bubblewrap (`android-app/twa/`), or just install the preview as a
+> PWA. Icons and store artwork for all of them are generated from code by
+> `tools/make_icons.py`.
 
 For the native Unity build, the project ships its own build tooling, so packaging
 is five menu clicks plus a keystore.

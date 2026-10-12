@@ -1,0 +1,5 @@
+// Kurd Castle — root build file.
+// The whole app is one module; the interesting part is in app/build.gradle.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}

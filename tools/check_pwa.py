@@ -143,6 +143,63 @@ def check_html():
     NOTES.append("index.html OK")
 
 
+def check_icons_are_current():
+    """Every generated icon should match the committed one: the generator is the
+    source of truth, and a hand-edited binary silently drifting from it is the
+    kind of thing nobody notices until the Play listing looks wrong."""
+    import hashlib
+    import tempfile
+
+    script = os.path.join(ROOT, "tools", "make_icons.py")
+    if not os.path.exists(script):
+        return
+
+    tracked = sorted(
+        os.path.join(dirpath, name)
+        for base in (os.path.join(PREVIEW, "icons"),
+                     os.path.join(ROOT, "android-app", "twa"),
+                     os.path.join(ROOT, "android-app", "webview", "app", "src", "main", "res"))
+        for dirpath, _dirs, files in os.walk(base)
+        for name in files
+        if name.endswith(".png")
+    )
+    if not tracked:
+        return
+
+    def digest(path):
+        with open(path, "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+
+    before = {p: digest(p) for p in tracked}
+
+    # Regenerate into the real locations, compare, then put the originals back so
+    # this check never leaves the working tree dirty.
+    stash = tempfile.mkdtemp(prefix="kurd-icons-")
+    for i, path in enumerate(tracked):
+        os.makedirs(os.path.join(stash, str(i)), exist_ok=True)
+        with open(os.path.join(stash, str(i), os.path.basename(path)), "wb") as fh:
+            fh.write(open(path, "rb").read())
+
+    import subprocess
+    subprocess.run([sys.executable, script], cwd=ROOT, check=False,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    drifted = [os.path.relpath(p, ROOT) for p in tracked
+               if os.path.exists(p) and digest(p) != before[p]]
+
+    for i, path in enumerate(tracked):
+        source = os.path.join(stash, str(i), os.path.basename(path))
+        if os.path.exists(source):
+            with open(source, "rb") as src, open(path, "wb") as dst:
+                dst.write(src.read())
+
+    if drifted:
+        err("regenerating icons changes " + ", ".join(drifted) +
+            " — commit the output of tools/make_icons.py")
+    else:
+        NOTES.append(f"all {len(tracked)} generated icons are reproducible from code")
+
+
 def check_twa():
     twa = os.path.join(ROOT, "android-app", "twa")
     manifest_path = os.path.join(twa, "twa-manifest.json")
@@ -192,6 +249,8 @@ def main():
     check_service_worker()
     check_html()
     check_twa()
+    if "--skip-icons" not in sys.argv:
+        check_icons_are_current()
 
     for note in NOTES:
         print("  " + note)

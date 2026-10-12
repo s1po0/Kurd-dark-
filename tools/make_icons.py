@@ -246,6 +246,29 @@ def render_feature(path, width=1024, height=500):
     return path
 
 
+# Android launcher densities: 48 dp icon, so mdpi..xxxhdpi
+MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96), ("xxhdpi", 144), ("xxxhdpi", 192)]
+
+
+def render_round(size, path):
+    """Round launcher icon: full-bleed art inside a circular mask."""
+    big = size * SUPERSAMPLE
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    img = draw_sky(img, big, 0)
+    draw = ImageDraw.Draw(img, "RGBA")
+    draw_starfield(draw, big)
+    draw_keep(draw, big)
+
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, big - 1, big - 1), fill=255)
+    img.putalpha(mask)
+    img = img.resize((size, size), Image.LANCZOS)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    img.save(path, "PNG", optimize=True)
+    return path
+
+
 def main():
     made = []
     # "any" icons: rounded square, art fills the canvas
@@ -260,6 +283,13 @@ def main():
     made.append(render(512, 0.0, 1.0, os.path.join(TWA_DIR, "icon.png")))
     # Play Store listing artwork: 1024x500 feature graphic
     made.append(render_feature(os.path.join(TWA_DIR, "feature-graphic.png")))
+
+    # Android launcher icons for the WebView shell (android-app/webview)
+    res = os.path.join(ROOT, "android-app", "webview", "app", "src", "main", "res")
+    for density, px in MIPMAPS:
+        folder = os.path.join(res, f"mipmap-{density}")
+        made.append(render(px, 0.20, 1.0, os.path.join(folder, "ic_launcher.png")))
+        made.append(render_round(px, os.path.join(folder, "ic_launcher_round.png")))
 
     for path in made:
         rel = os.path.relpath(path, ROOT)
