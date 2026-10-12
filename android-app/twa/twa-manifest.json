@@ -1,0 +1,51 @@
+{
+  "packageId": "com.kurdcastle.prototype",
+  "host": "s1po0.github.io",
+  "name": "Kurd Castle",
+  "launcherName": "Kurd Castle",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "themeColor": "#1a1714",
+  "themeColorDark": "#000000",
+  "navigationColor": "#1a1714",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#1a1714",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#14100d",
+  "enableNotifications": false,
+  "startUrl": "https://s1po0.github.io/Kurd-dark-/",
+  "iconUrl": "https://s1po0.github.io/Kurd-dark-/icons/icon-512.png",
+  "maskableIconUrl": "https://s1po0.github.io/Kurd-dark-/icons/maskable-512.png",
+  "webManifestUrl": "https://s1po0.github.io/Kurd-dark-/manifest.webmanifest",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "0.9.0-prototype",
+  "appVersionCode": 1,
+  "appVersion": "0.9.0-prototype",
+  "shortcuts": [],
+  "generatorApp": "kurd-castle-config-twa",
+  "generatedBy": "tools/configure_twa.py",
+  "webviewFallback": "customtabs",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": {
+      "enabled": false
+    },
+    "appsFlyer": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "isTrustedWebActivity": true,
+  "minSdkVersion": 21,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}

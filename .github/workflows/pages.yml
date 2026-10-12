@@ -1,0 +1,68 @@
+name: Publish playable preview
+
+# Publishes preview/ to GitHub Pages, which gives the prototype a real HTTPS URL:
+#   https://<owner>.github.io/<repo>/
+# That URL is what you play on a phone, what you point a Trusted Web Activity
+# build at, and what you share with testers.
+#
+# One-time setup: repository Settings -> Pages -> Build and deployment ->
+# Source: GitHub Actions. After that, every push to main (or a manual run)
+# republishes the game.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'preview/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check the build before publishing
+        run: |
+          node --check preview/src/main.js
+          node --check preview/src/sim.js
+          node --check preview/src/render.js
+          node --check preview/src/ui.js
+          node --check preview/src/map.js
+          node --check preview/src/balance.js
+          node --check preview/sw.js
+          python3 -c "import json;json.load(open('preview/manifest.webmanifest'))"
+
+      - name: Run the headless suite
+        run: node preview/test/headless.mjs
+
+      - name: Validate the installable-app plumbing
+        run: python3 tools/check_pwa.py
+
+      - name: Disable Jekyll processing
+        run: touch preview/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: preview
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

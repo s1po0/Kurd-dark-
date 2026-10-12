@@ -7,6 +7,10 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Kurd Castle — mobile siege prototype</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/favicon-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <meta name="description" content="A Stronghold-inspired isometric castle builder and siege defence for touch screens." />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -16,6 +20,7 @@
     <div id="rotate-hint">Rotate your device — Kurd Castle is played in landscape</div>
   </div>
   <script type="module" src="./src/main.js"></script>
+  <script src="./pwa.js" defer></script>
   <noscript>This prototype needs JavaScript enabled.</noscript>
 </body>
 </html>

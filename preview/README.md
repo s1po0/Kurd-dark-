@@ -96,3 +96,15 @@ sources.
 | `src/ui.js` | The HUD: resource strip, popularity drawer, minimap, speed controls, tabbed build menu, selection panel, toasts and overlays |
 | `src/main.js` | Boot, the fixed-step game loop (10 Hz logic, render interpolation) and every input path |
 | `test/headless.mjs` | The DOM-stubbed smoke test described above |
+
+## Install it as an app (no store needed)
+
+`preview/` is a complete PWA: `manifest.webmanifest` describes it (name, icons,
+fullscreen, landscape), `sw.js` precaches the app shell so it plays offline, and
+`pwa.js` registers the worker and surfaces an **Install** pill when the browser
+offers a prompt. Open the published URL on an Android phone and use
+*Add to Home screen*.
+
+That same URL can be wrapped into a real signed APK/AAB with Bubblewrap — see
+`android-app/README.md`. The icons and the store feature graphic are generated
+from code by `tools/make_icons.py`; nothing here is a binary someone has to draw.

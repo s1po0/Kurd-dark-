@@ -83,6 +83,26 @@ html, body {
   #rotate-hint { display: flex; }
 }
 
+/* "Install" pill, injected by pwa.js when the browser offers an install prompt. */
+#install-app {
+  position: absolute;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-solid);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+#install-app:active { transform: translateX(-50%) scale(0.97); }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);

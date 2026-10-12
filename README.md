@@ -45,6 +45,11 @@ python3 -m http.server 8080 --bind 0.0.0.0 --directory preview
 # open http://localhost:8080  (landscape phone, tablet or desktop browser)
 ```
 
+It also installs: open the published URL on an Android phone and use
+*Add to Home screen* (or the in-game **Install** pill). It launches full-screen
+in landscape with its own icon and works offline, because `preview/sw.js`
+precaches the whole (tiny) app shell.
+
 ---
 
 ## Repository layout
@@ -71,8 +76,18 @@ unity/KurdCastle/                 Unity 6 project (6000.0.32f1)
   Assets/Scripts/GameBootstrap.cs One entry point that builds the game in an empty scene
   Assets/Editor/                  Menu + batch tooling: settings, scene, APK/AAB builds
   Assets/Tests/EditMode/          EditMode tests for the rules that must not regress
-preview/                          Playable browser mirror (see preview/README.md)
+preview/                          Playable browser mirror (see preview/README.md):
+                                  index.html, style.css, src/*.js, test/headless.mjs,
+                                  manifest.webmanifest + sw.js + icons/ (installable
+                                  PWA), pwa.js
+android-app/                      Android packaging (see android-app/README.md):
+                                  Bubblewrap Trusted Web Activity config, store icon
+                                  and feature graphic, Digital Asset Links template
+.github/workflows/pages.yml       Publishes preview/ to GitHub Pages, after running
+                                  the headless test suite
 tools/check_csharp.py             Static checker used because this repo has no CI
+tools/make_icons.py               Regenerates every icon from code (Pillow)
+tools/configure_twa.py            Writes the TWA manifest + assetlinks.json for your host
 ```
 
 Run the two verification gates from the repository root:
@@ -152,7 +167,15 @@ sprites, throttled minimap, signature-guarded HUD rebuilds).
 
 ## Building the Android APK — step by step
 
-The project ships its own build tooling, so packaging is five menu clicks plus a keystore.
+> **In a hurry, or no Unity install handy?** `android-app/README.md` has a second,
+> fully scriptable route: the browser build wrapped into a real signed **APK and
+> Play-Store AAB** with Bubblewrap (a Trusted Web Activity). It needs only Node,
+> a JDK and the Android SDK — all of which install themselves — and takes about
+> fifteen minutes end to end. Store icon and feature graphic are already
+> generated in `android-app/twa/`.
+
+For the native Unity build, the project ships its own build tooling, so packaging
+is five menu clicks plus a keystore.
 
 ### 0. Prerequisites (once per machine)
 
