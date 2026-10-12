@@ -52,3 +52,9 @@ yarn-error.log*
 *.swp
 *~
 Thumbs.db
+
+# --- Emberhold (Vite + Capacitor app at the repository root) ---
+node_modules/
+dist/
+android/
+coverage/

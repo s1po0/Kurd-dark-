@@ -1,0 +1,49 @@
+@import 'tailwindcss';
+
+/* Parchment and iron. Serif for titles, system stacks for body text (offline). */
+@theme {
+  --font-serif: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --color-iron-900: #15130f;
+  --color-iron-800: #1f1b16;
+  --color-iron-700: #2b261f;
+  --color-iron-600: #3d362c;
+  --color-iron-500: #5a5043;
+  --color-parchment: #e9dcb8;
+  --color-brass: #d9a94a;
+  --color-ember: #e26b2d;
+  --color-player: #3d7fd9;
+  --color-enemy: #d4493c;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-iron-900);
+  color: var(--color-parchment);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding:
+    env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+button {
+  font: inherit;
+}
+
+/* Every button is at least 48 px tall for touch. */
+.touch-btn {
+  min-height: 48px;
+  min-width: 48px;
+}

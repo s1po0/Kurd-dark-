@@ -1,3 +1,92 @@
+# Emberhold
+
+An offline medieval castle-builder RTS for Android phones, in landscape. Grow an
+economy, keep your people happy, forge an army, raise walls and towers, then hold
+or break a siege. Built with Vite, React, TypeScript, Tailwind, Phaser 3 and
+Capacitor. The whole game is original: no art, names, sounds or UI from any
+commercial game.
+
+> **Status: Milestone M0 (foundation) is in place.** The menu, a pannable and
+> zoomable test map, the Android shell and the APK workflow work. The economy,
+> army, siege and campaign are built milestone by milestone (see `CHANGELOG.md`
+> and `DECISIONS.md`). Nothing is shown in the menu until it works.
+
+## Get the APK
+
+No terminal needed.
+
+1. Open the repository on GitHub and go to **Actions ▸ Build Emberhold APK**.
+2. Open the latest successful run and download the **emberhold-apk** artifact at
+   the bottom of the page. It is a zip containing `app-release.apk`.
+3. Unzip it on the phone, allow **Install unknown apps** for the app you opened
+   it from, and install.
+4. Updates install over older builds, because every run signs with the same key
+   (see "Signing" below).
+
+If a run fails, open the failing step, copy the last 40 lines of its log, and
+paste them into the AI assistant to get a fix.
+
+To get a tagged release with a stable download link, push a tag `emberhold-v<version>`.
+The APK is then attached to a GitHub Release.
+
+## Run it in a browser
+
+```bash
+npm ci
+npm run dev          # http://localhost:5173 (touch emulation works in DevTools)
+npm test             # Vitest: simulation and Android patch tests
+npm run build        # type check + production bundle in dist/
+```
+
+## Rename the game or the app id
+
+* Name, id and version: `src/config/brand.ts` (`name`, `appId`, `version`).
+  `capacitor.config.ts` and the Android patch script read them from there.
+* Change `appId` and re-run the workflow. The Android project is generated again
+  in CI, so no `android/` folder is committed.
+* Google Play needs a signed app bundle (AAB). That is out of scope for v1.
+
+## Signing
+
+Signing is a single stable key so that every build installs over the last one:
+
+* If the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+  `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` exist, they are used.
+* Otherwise a key is generated once and kept in the Actions cache, keyed by branch.
+  The cache can be evicted after about a week without use. Add the four secrets to
+  make the key permanent.
+* No keystore file is committed to the repository.
+
+## Layout
+
+```
+src/app/         routes, screens, error boundary, Capacitor lifecycle
+src/game/sim/    simulation: seeded RNG, typed-array tile grid (no Phaser, no React)
+src/game/render/ Phaser scene and canvas mount (gestures, zoom, background pause)
+src/game/data/   game data (test map now; balance tables arrive in M2)
+src/i18n/en.ts   every visible string, via t('key')
+src/config/      brand.ts, the single place for name and app id
+tests/           Vitest tests, including the Android patch functions against real files
+scripts/         make-icons.mjs (launcher and splash sizes), prepare-android.mjs (manifest, activity, gradle)
+assets/          icon.svg and splash.svg (original emblem)
+.github/workflows/emberhold-apk.yml   the APK build
+```
+
+## Quality and measured numbers
+
+Measured numbers are written here once the performance scene exists (M4) and the
+soak test runs (M8). Until then this section is intentionally empty rather than
+guessed.
+
+## Not in v1
+
+Nothing is cut yet. Anything removed from the brief will be listed here, and its
+UI removed with it.
+
+---
+
+# Kurd Castle (prototype, unchanged)
+
 # Kurd Castle
 
 A Stronghold-inspired isometric castle-builder / RTS built for Android touch screens.

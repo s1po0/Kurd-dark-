@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Emberhold splash: the emblem on a parchment-and-iron ground. Original art. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="75%">
+      <stop offset="0%" stop-color="#3d2a18"/>
+      <stop offset="100%" stop-color="#15130f"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g transform="translate(960 470) scale(0.42) translate(-512 -512)">
+    <circle cx="512" cy="512" r="410" fill="none" stroke="#d9a94a" stroke-width="28"/>
+    <g fill="#9a9182" stroke="#2b261f" stroke-width="16" stroke-linejoin="round">
+      <rect x="380" y="430" width="264" height="330"/>
+      <rect x="352" y="380" width="60" height="70"/>
+      <rect x="612" y="380" width="60" height="70"/>
+      <rect x="482" y="380" width="60" height="70"/>
+    </g>
+    <path d="M458 760 V640 a54 54 0 0 1 108 0 V760 Z" fill="#15130f"/>
+    <path d="M512 150 C 470 230, 430 270, 452 332 C 466 372, 500 386, 512 386 C 524 386, 558 372, 572 332 C 594 270, 554 230, 512 150 Z" fill="#e26b2d"/>
+    <rect x="330" y="760" width="364" height="30" fill="#2b261f"/>
+  </g>
+  <text x="960" y="860" text-anchor="middle" font-family="Georgia, serif" font-size="150" font-weight="700" fill="#d9a94a">Emberhold</text>
+  <text x="960" y="935" text-anchor="middle" font-family="Georgia, serif" font-size="46" fill="#e9dcb8" opacity="0.85">Raise the walls. Feed the people. Hold the keep.</text>
+</svg>
